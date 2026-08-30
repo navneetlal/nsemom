@@ -152,6 +152,14 @@ Three tabs: the **shortlist** for any session and preset, sortable by any column
 add, close and delete; and a **symbol** view with an adjusted-price chart, the
 four EMAs, volume, RSI, and that symbol's corporate actions.
 
+Every table has a **copy CSV** button that copies exactly what is on screen —
+current sort, current columns — straight onto the clipboard for the research
+prompt below. Values are copied raw rather than display-formatted, so
+percentages stay as ratios, with float noise trimmed (`70.0484`, not
+`70.04838562011719`). It falls back to a legacy copy path on a plain-HTTP LAN
+address, where `navigator.clipboard` is unavailable because the page is not a
+secure context.
+
 ### What it deliberately does not do
 
 The server is a DuckDB connector and nothing more. It cannot run a backtest,
@@ -523,10 +531,12 @@ Tests target the things that break silently rather than loudly.
 - a symbol path cannot be used to traverse, and unknown routes return JSON
 - the shortlist reports the same columns whether or not anything passed
 
-**UI** (`ui/scripts/render-check.mjs`)
+**UI** (`ui/scripts/render-check.mjs`, 14 checks)
 - the app and chart render in node without throwing
 - the chart survives a single bar, all-null closes, and a flat series — the
   three shapes that produce `NaN` coordinates and a blank SVG
+- CSV export quotes commas, quotes and newlines; writes null as empty rather
+  than the string `null`; and respects the column order given
 
 **Ingest** (`test_bhavcopy.py`, `test_store.py`, `test_calendar.py`)
 - legacy and UDiFF parsers agree on **every field** of an overlap session

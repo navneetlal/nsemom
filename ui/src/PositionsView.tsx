@@ -1,7 +1,14 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api } from './api'
+import CopyCsvButton from './CopyCsvButton'
 import { num, pct, signClass } from './format'
 import type { Meta, Positions } from './types'
+
+const OPEN_CSV = ['symbol', 'entry_date', 'entry_price', 'quantity', 'bars_held',
+  'last_close', 'peak_close', 'initial_stop', 'trailing_stop',
+  'unrealised_return', 'action']
+const CLOSED_CSV = ['symbol', 'entry_date', 'entry_price', 'exit_date',
+  'exit_price', 'quantity', 'realised_return', 'exit_reason']
 
 const badgeClass = (action: string) =>
   action.startsWith('EXIT') ? 'exit' : action.startsWith('WATCH') ? 'watch' : 'hold'
@@ -91,6 +98,8 @@ export default function PositionsView({
             · as of {data?.as_of ?? '–'} · stop {exitRules.initial_stop_atr}×ATR,
             trail {exitRules.trailing_stop_atr}×ATR, time stop {exitRules.max_hold_days} sessions
           </span>
+          <div className="spacer" />
+          <CopyCsvButton columns={OPEN_CSV} rows={open} />
         </div>
 
         {open.length === 0 ? (
@@ -168,7 +177,11 @@ export default function PositionsView({
 
       {closed.length > 0 && (
         <div className="panel">
-          <div className="panel-head"><strong>{closed.length} closed</strong></div>
+          <div className="panel-head">
+            <strong>{closed.length} closed</strong>
+            <div className="spacer" />
+            <CopyCsvButton columns={CLOSED_CSV} rows={closed} />
+          </div>
           <div className="scroll">
             <table>
               <thead>

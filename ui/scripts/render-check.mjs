@@ -13,7 +13,7 @@ const base = process.argv[2] ?? 'http://127.0.0.1:8787'
 const require = createRequire(import.meta.url)
 
 const bundle = await build({
-  entryPoints: ['src/App.tsx', 'src/Chart.tsx'],
+  entryPoints: ['src/App.tsx', 'src/Chart.tsx', 'src/format.ts'],
   bundle: true, write: false, format: 'cjs', platform: 'node',
   // outdir is required for multiple entry points even though write:false
   // means nothing reaches disk; it only names the in-memory outputs.
@@ -91,6 +91,34 @@ if (bars.length === 0) {
     if (/NaN/.test(out)) throw new Error('flat series produced NaN')
   })
 }
+
+// 3. the CSV builder, which is pure and therefore properly testable
+const { toCsv } = load('format')
+
+check('csv emits a header and one line per row', () => {
+  const out = toCsv(['symbol', 'close'], [{ symbol: 'A', close: 1 }, { symbol: 'B', close: 2 }])
+  if (out !== 'symbol,close\nA,1\nB,2') throw new Error(JSON.stringify(out))
+})
+check('csv respects the column order given, not object key order', () => {
+  const out = toCsv(['close', 'symbol'], [{ symbol: 'A', close: 1 }])
+  if (out !== 'close,symbol\n1,A') throw new Error(JSON.stringify(out))
+})
+check('csv writes null and undefined as empty, not "null"', () => {
+  const out = toCsv(['a', 'b'], [{ a: null, b: undefined }])
+  if (out !== 'a,b\n,') throw new Error(JSON.stringify(out))
+})
+check('csv quotes commas, quotes and newlines', () => {
+  const out = toCsv(['x'], [{ x: 'a,b' }, { x: 'say "hi"' }, { x: 'one\ntwo' }])
+  const want = 'x\n"a,b"\n"say ""hi"""\n"one\ntwo"'
+  if (out !== want) throw new Error(JSON.stringify(out))
+})
+check('csv trims float noise but keeps meaning', () => {
+  const out = toCsv(['rsi', 'mom'], [{ rsi: 70.04838562011719, mom: 0.17966901 }])
+  if (out !== 'rsi,mom\n70.0484,0.179669') throw new Error(JSON.stringify(out))
+})
+check('csv leaves an empty row set as just the header', () => {
+  if (toCsv(['a', 'b'], []) !== 'a,b') throw new Error('unexpected body')
+})
 
 for (const [ok, name, detail] of checks) {
   console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? ` -> ${detail}` : ''}`)

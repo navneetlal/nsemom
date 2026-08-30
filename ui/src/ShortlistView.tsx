@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api } from './api'
+import CopyCsvButton from './CopyCsvButton'
 import { crore, num, pct, signClass } from './format'
 import type { Row, Shortlist } from './types'
 
@@ -78,6 +79,12 @@ export default function ShortlistView({
       <div className="panel-head">
         <strong>{data.rows.length} candidates</strong>
         <span>· {data.date} · preset <strong>{data.preset}</strong> · ranked by {data.rank_by}</span>
+        <div className="spacer" />
+        <CopyCsvButton
+          columns={columns.map((c) => c.key)}
+          rows={rows}
+          title="Paste straight into the research prompt in the README"
+        />
       </div>
       {data.rows.length === 0 ? (
         <div className="msg">
