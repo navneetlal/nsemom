@@ -6,7 +6,21 @@
     <title>nsemom</title>
   </head>
   <body>
-    <div id="root"></div>
+    <!-- Replaced by React on mount. If it survives, JS never ran - which
+         otherwise shows as a blank white page with no clue why. -->
+    <div id="root">
+      <div style="font:14px system-ui;color:#8b949e;padding:40px;max-width:640px">
+        <p style="color:#e6edf3;font-size:16px">Loading nsemom…</p>
+        <p>If this message stays, the JavaScript bundle did not run. Check the
+           browser console, and that <code>ui/dist</code> was built
+           (<code>cd ui &amp;&amp; npm run build</code>).</p>
+      </div>
+    </div>
+    <noscript>
+      <div style="font:14px system-ui;color:#f85149;padding:40px">
+        This page needs JavaScript.
+      </div>
+    </noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
