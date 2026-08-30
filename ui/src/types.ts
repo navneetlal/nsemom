@@ -71,6 +71,8 @@ export interface Bar {
   ema_200: number | null
   rsi: number | null
   adx: number | null
+  stoch_k: number | null
+  stoch_d: number | null
   atr: number | null
   median_turnover: number | null
   mom_short: number | null

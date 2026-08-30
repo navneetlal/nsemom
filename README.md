@@ -252,16 +252,21 @@ than argument:
 
 ```bash
 nsemom screen                                    # today, default preset
-nsemom backtest --preset hybrid --preset chartink --preset spec
-nsemom backtest --preset hybrid --split 2023-01-01   # walk-forward
+nsemom backtest --preset pullback --preset trend --preset breakout
+nsemom backtest --preset pullback --split 2021-01-01  # walk-forward
 ```
 
 | preset | what it is |
 |---|---|
-| `hybrid` | **default.** EMA stacking, ADX, median-turnover floor, volume expansion as a *ranking* input rather than a gate |
-| `pullback` | hybrid plus a Stochastic %K ceiling — see below; better risk-adjusted, fewer trades |
-| `chartink` | the live Chartink screener, reproduced exactly |
-| `spec` | the literal original written spec |
+Presets are named for **when they enter** — all four require an established
+uptrend, so entry timing is the only thing that really separates them.
+
+| preset | enters | |
+|---|---|---|
+| `pullback` | on weakness inside strength | **default** |
+| `trend` | whenever the trend qualifies | no timing filter |
+| `breakout` | on a one-day volume surge | reproduces the Chartink screener |
+| `baseline` | whenever the trend qualifies | the original written spec |
 
 Two differences worth knowing about, both measured rather than assumed:
 
@@ -435,9 +440,9 @@ differs is where the value sits.
 
 ### The `pullback` preset
 
-`hybrid` plus `max_stoch_k = 50`:
+`trend` plus `max_stoch_k = 50`, and now the default:
 
-| | hybrid | **pullback** |
+| | `trend` | **`pullback`** |
 |---|---|---|
 | net CAGR, full period | 15.37% | **20.90%** |
 | in-sample 2015–2020 | 14.62% | 16.26% |

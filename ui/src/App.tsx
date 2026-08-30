@@ -64,7 +64,9 @@ export default function App() {
           <SymbolSearch onPick={openSymbol} />
           <select value={preset} onChange={(e) => setPreset(e.target.value)} title="screen preset">
             {meta.presets.map((p) => (
-              <option key={p} value={p}>{p}</option>
+              <option key={p} value={p}>
+                {p}{p === meta.default_preset ? ' (default)' : ''}
+              </option>
             ))}
           </select>
           <select value={date} onChange={(e) => setDate(e.target.value)} title="session">

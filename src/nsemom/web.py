@@ -209,7 +209,7 @@ def route_symbol(backend: Backend, symbol: str, query: dict) -> dict:
     days = max(30, min(int(query.get("days", ["260"])[0]), 2000))
     bars = backend.query(
         """SELECT trade_date, open, high, low, close, volume, turnover,
-                  ema_20, ema_50, ema_100, ema_200, rsi, adx, atr,
+                  ema_20, ema_50, ema_100, ema_200, rsi, adx, stoch_k, stoch_d, atr,
                   median_turnover, mom_short, mom_long_skip, ext_zscore,
                   trend_age_days, pct_from_high
              FROM indicators WHERE symbol = ?

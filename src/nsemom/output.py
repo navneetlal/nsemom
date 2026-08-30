@@ -27,8 +27,8 @@ log = logging.getLogger(__name__)
 SHORTLIST_COLUMNS = [
     "rank", "symbol", "close", "rsi", "adx", "mom_short", "mom_long_skip",
     "ext_atr", "ext_zscore", "pct_from_high", "trend_age_days", "up_day_ratio",
-    "rsi_divergence", "vol_ratio", "vol_sustained", "median_turnover", "atr",
-    "suggested_stop",
+    "rsi_divergence", "stoch_k", "stoch_d", "vol_ratio", "vol_sustained",
+    "median_turnover", "atr", "suggested_stop",
 ]
 
 

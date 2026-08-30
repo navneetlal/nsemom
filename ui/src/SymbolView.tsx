@@ -75,6 +75,12 @@ export default function SymbolView({
         <div className="grid">
           <div className="stat"><div className="k">RSI(14)</div><div className="v">{num(last.rsi, 1)}</div></div>
           <div className="stat"><div className="k">ADX(14)</div><div className="v">{num(last.adx, 1)}</div></div>
+          <div className="stat">
+            <div className="k">Stochastic %K</div>
+            <div className={`v ${last.stoch_k !== null && last.stoch_k < 50 ? 'up' : ''}`}>
+              {num(last.stoch_k, 0)}
+            </div>
+          </div>
           <div className="stat"><div className="k">ATR(14)</div><div className="v">{num(last.atr, 2)}</div></div>
           <div className="stat"><div className="k">30d momentum</div>
             <div className={`v ${signClass(last.mom_short)}`}>{pct(last.mom_short)}</div></div>
