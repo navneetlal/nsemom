@@ -1,0 +1,41 @@
+[Unit]
+Description=NSE momentum screener - daily ingest, recompute and shortlist
+Documentation=file:/opt/nsemom/README.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=nsemom
+Group=nsemom
+WorkingDirectory=/opt/nsemom
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/opt/nsemom/.venv/bin/nsemom daily
+
+# NSE publishes the bhavcopy around 18:00-18:30 IST. If the file is not up yet
+# the run exits non-zero and systemd retries; the ingest also marks that date
+# 'pending' rather than 'holiday', so a later run fills it in regardless.
+Restart=on-failure
+RestartSec=15min
+
+# Cap the retries so a genuine outage does not retry all night.
+StartLimitIntervalSec=6h
+StartLimitBurst=5
+
+# journalctl is the log. No separate log file to rotate on the SD card.
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=nsemom
+
+# The job needs the network and its own data directory, nothing else.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/nsemom/data
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+
+[Install]
+WantedBy=multi-user.target

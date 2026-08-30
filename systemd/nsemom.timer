@@ -1,0 +1,21 @@
+[Unit]
+Description=Run the NSE momentum screener on trading weekday evenings
+Documentation=file:/opt/nsemom/README.md
+
+[Timer]
+# NSE publishes around 18:00-18:30 IST; 19:00 leaves margin. The explicit
+# timezone means the Pi's own timezone does not silently change the schedule.
+# (Timezone suffixes need systemd 252+. On older systemd, drop the suffix and
+# set the machine timezone with: timedatectl set-timezone Asia/Kolkata)
+OnCalendar=Mon..Fri 19:00 Asia/Kolkata
+
+# A run missed because the Pi was off or rebooting fires as soon as it is back,
+# rather than being skipped until the next weekday.
+Persistent=true
+
+# Avoid hitting NSE at exactly the same second as every other scheduled job.
+RandomizedDelaySec=300
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target
