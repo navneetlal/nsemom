@@ -13,8 +13,9 @@ from nsemom.backtest import ExitRules
 from nsemom.config import Config
 from nsemom.indicators import rebuild
 from nsemom.ingest.bhavcopy import Bar
-from nsemom.output import (HealthError, check_health, latest_date,
-                           log_shortlist, open_position_status, shortlist)
+from nsemom.output import (SHORTLIST_COLUMNS, HealthError, check_health,
+                           latest_date, log_shortlist, open_position_status,
+                           shortlist)
 from nsemom.screen import Preset
 from nsemom.store.db import Store
 
@@ -145,3 +146,29 @@ def test_every_shortlist_row_is_logged_for_later_comparison(built):
     # re-logging the same day must not duplicate
     log_shortlist(store, frame, "p", as_of)
     assert store.con.execute("SELECT count(*) FROM shortlist_log").fetchone()[0] == logged
+
+
+def test_a_position_opened_on_the_latest_bar_still_reports(built):
+    # Bought at today's close: there are no bars after entry yet. If the path
+    # join excludes the entry bar the position silently vanishes from the daily
+    # output and from the UI - the one moment you most want to see it.
+    store, _ = built
+    latest = latest_date(store)
+    store.con.execute(
+        "INSERT INTO positions VALUES (1,'ALPHA',?,140.0,10,NULL,NULL,NULL,NULL)",
+        [latest])
+
+    status = open_position_status(store, RULES, 50, latest)
+    assert len(status) == 1, "position bought on the latest bar disappeared"
+    assert status["action"].iloc[0] == "HOLD"
+    assert status["bars_held"].iloc[0] == 1
+
+
+def test_shortlist_reports_full_columns_even_when_nothing_passes(built):
+    store, _ = built
+    impossible = Preset.from_raw("impossible",
+                                 {**PERMISSIVE, "min_turnover": 1e18})
+    frame = shortlist(store, impossible, RULES, 20, latest_date(store))
+    assert frame.empty
+    assert "suggested_stop" in frame.columns
+    assert list(frame.columns) == [c for c in SHORTLIST_COLUMNS if c in frame.columns]

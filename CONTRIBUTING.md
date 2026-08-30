@@ -13,11 +13,20 @@ and a change that violates one will be declined however well written it is.
 python3 -m venv .venv
 ./.venv/bin/pip install -r requirements-dev.txt
 ./.venv/bin/pip install -e .
-./.venv/bin/python -m pytest        # 90 tests, all offline, ~9 seconds
+./.venv/bin/python -m pytest        # 106 tests, all offline, ~11 seconds
 ```
 
 Tests need no network and no database. Fixtures are two real bhavcopy files
 committed under `tests/fixtures/`.
+
+The optional UI is a separate toolchain:
+
+```bash
+cd ui && npm install
+npm run check      # typecheck, then render the components in node
+npm run build      # emits ui/dist, which `nsemom serve` serves
+npm run dev        # hot reload on :5173, proxying /api to :8787
+```
 
 To work against real data you need a backfill first. It takes about an hour
 against NSE's rate limit and produces ~685 MB:
@@ -89,6 +98,8 @@ failed date, and a silent wrong answer is worse than both.
 | a new cost | a test pinning which components it applies to |
 | a new screen preset | an entry in `config.toml`, not a code branch |
 | a parser change | a test carrying the real NSE string that motivated it |
+| a UI change | `npm run check` passes; anything data-shaped gets a case in `render-check.mjs` |
+| a new API route | a test in `tests/test_web.py` against the real server |
 
 Backtest results in a PR description should say which period they came from and
 whether the parameters were chosen on that same period. A number tuned on the
@@ -99,6 +110,17 @@ data it is measured on is not evidence.
 Boring and readable over clever. Match the surrounding code. Comments should
 explain *why* a thing is done, especially where the obvious approach is wrong —
 those comments are load-bearing and several of them record real bugs.
+
+## The UI is a DuckDB connector, nothing more
+
+`nsemom serve` exists so a wide table is readable in a browser. It must not grow
+into a control panel: no triggering backtests or ingests, no editing config. Those
+belong on the command line, where output is reviewable and parameters are in
+version control. Its only writes are to `positions`.
+
+It also must never hold the database open. DuckDB permits one writer and no
+concurrent readers from other processes, so a cached connection would block
+`nsemom daily` every night. Open per request, close immediately.
 
 ## Raspberry Pi constraints
 

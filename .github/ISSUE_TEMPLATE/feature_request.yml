@@ -6,8 +6,9 @@ body:
     attributes:
       value: >
         Please read the four non-negotiables in CONTRIBUTING.md first. In short:
-        no machine learning in the signal path, no web UI or REST API, every
-        threshold in config, and raw data stays immutable.
+        no machine learning in the signal path, every threshold in config, raw
+        data immutable, and the UI stays a DuckDB connector rather than a
+        control panel.
 
   - type: textarea
     id: problem
@@ -35,6 +36,7 @@ body:
         - Screen or presets
         - Backtest, exits or costs
         - Daily output, positions, scheduling
+        - Local UI (nsemom serve)
         - Tooling, docs, CI
     validations:
       required: true

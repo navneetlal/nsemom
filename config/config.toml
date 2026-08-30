@@ -46,12 +46,19 @@ start = 2000-01-01
 end   = 2024-07-08
 
 [screen]
-default_preset = "hybrid"
+# Presets are named for WHEN they enter, which is the only thing that really
+# separates them - all four require an established uptrend.
+#   pullback  enter on weakness inside strength   (default)
+#   trend     enter whenever the trend qualifies, no timing filter
+#   breakout  enter on a volume surge
+#   baseline  the original written spec, kept for comparison
+default_preset = "pullback"
 
-# Recommended default: the spec's trend STRUCTURE, Chartink's ADX, a median
-# turnover floor, and volume expansion demoted from a hard gate to a ranking
-# input - with more candidates than slots, a binary gate discards information.
-[screen.presets.hybrid]
+# TREND - an established uptrend with no entry-timing condition. The spec's trend
+# structure, ADX, a median turnover floor, and volume expansion demoted from a
+# hard gate to a ranking input: with more candidates than slots, a binary gate
+# discards information rather than filtering.
+[screen.presets.trend]
 require_ema_stack   = true
 require_close_above = false
 rsi_min             = 60.0
@@ -66,8 +73,31 @@ volume_min_ratio    = 1.3
 rank_by             = "mom_long_skip"
 basket_size         = 15
 
-# Exactly what the live Chartink screener does, for head-to-head comparison.
-[screen.presets.chartink]
+# PULLBACK (default) - `trend`, plus a Stochastic %K ceiling. Strong intermediate
+# momentum with the close in the lower half of its 14-day range: a dip inside an
+# intact trend rather than an extended one. Measured 25.92% mean / 12.35% median
+# forward 60-session return at a 70.6% win rate, against ~10% / ~5.5% for the
+# extended case, and it holds in both halves of a 2021 split.
+[screen.presets.pullback]
+require_ema_stack   = true
+require_close_above = false
+rsi_min             = 60.0
+rsi_max             = 75.0
+adx_min             = 25.0
+min_close           = 50.0
+liquidity_mode      = "median"
+min_turnover        = 100000000.0
+volume_mode         = "rank"
+volume_metric       = "sustained"
+volume_min_ratio    = 1.3
+max_stoch_k         = 50.0
+rank_by             = "mom_long_skip"
+basket_size         = 15
+
+# BREAKOUT - enters on a one-day volume surge. Reproduces the live Chartink
+# screener exactly, including its same-day turnover filter, which measured a
+# 44% false-pass rate against a 20-day median floor. Kept for comparison.
+[screen.presets.breakout]
 require_ema_stack   = false
 require_close_above = true
 rsi_min             = 60.0
@@ -82,8 +112,9 @@ volume_min_ratio    = 1.5
 rank_by             = "mom_short"
 basket_size         = 15
 
-# The literal original prompt spec.
-[screen.presets.spec]
+# BASELINE - the literal original written spec, kept so changes can be measured
+# against where this started.
+[screen.presets.baseline]
 require_ema_stack   = true
 require_close_above = false
 rsi_min             = 60.0
@@ -182,6 +213,13 @@ volume_avg_days  = 20
 # day horizon, and it is what contaminates a same-day turnover filter.
 volume_fast_days = 5
 volume_slow_days = 50
+
+# Stochastic %K: where the close sits in the recent high-low range. Included as
+# a PULLBACK measure, not an overbought one - measured over 2015-2026, a LOW %K
+# inside a strong trend is the high-return setup, and a high %K is mildly
+# negative. See the README.
+stoch_period      = 14
+stoch_smoothing   = 3
 
 turnover_median_days  = 20
 high_lookback_days    = 252

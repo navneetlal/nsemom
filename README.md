@@ -29,6 +29,10 @@ produces a flattering backtest and a disappointing live account.
     tracking     Today's output also says: HOLD / EXIT for what you own.
 
 [7] Backtest     measures the shortlist's expectancy and the exit rules
+
+     UI          `nsemom serve` — a local read-only view of the same DuckDB
+                 file, plus adding and closing positions. Nothing else: it
+                 cannot run a backtest, an ingest, or edit config.
 ```
 
 The split matters: **the deterministic layer decides what is worth looking at,
@@ -46,6 +50,7 @@ All five stages are built and tested.
 | 3 — Indicators | EMA/RSI/ADX/ATR + evidence pack | `nsemom indicators` |
 | 4 — Screen + backtest | presets, costs, exits, walk-forward | `nsemom screen` / `backtest` |
 | 5 — Schedule + output | systemd timer, CSV + position exits | `nsemom daily` |
+| Local UI (optional) | read-only browser view + position entry | `nsemom serve` |
 
 ## First-time setup
 
@@ -56,7 +61,7 @@ git clone <this repo> && cd momentum-trading
 python3 -m venv .venv
 ./.venv/bin/pip install -r requirements-dev.txt
 ./.venv/bin/pip install -e .
-./.venv/bin/python -m pytest        # 18 tests, all offline
+./.venv/bin/python -m pytest        # 106 tests, all offline
 ```
 
 On the Pi, `duckdb`, `pandas` and `numpy` all publish `cp314` aarch64 manylinux
@@ -111,7 +116,8 @@ That runs the whole chain and leads its output with HOLD / EXIT for anything you
 hold, before listing new candidates. It exits non-zero if any date failed or a
 health check trips, so the scheduled job fails loudly rather than leaving you
 with a stale shortlist. Individual stages are also available on their own
-(`update`, `corpactions`, `adjust`, `indicators`, `screen`).
+(`update`, `corpactions`, `adjust`, `indicators`, `screen`, `backtest`,
+`compact`, `position`).
 
 ### Storage
 
@@ -130,6 +136,60 @@ Derived indicators are stored as 32-bit floats, which halves the largest table
 and changes no result — the full backtest is bit-identical either way. OHLC,
 turnover and median turnover stay 64-bit because they become fill prices and a
 liquidity threshold.
+
+## Local UI
+
+An optional browser view of the same database, for when reading a wide table over
+SSH gets tiring.
+
+```bash
+cd ui && npm install && npm run build     # once
+./.venv/bin/nsemom serve                  # http://127.0.0.1:8787
+```
+
+Three tabs: the **shortlist** for any session and preset, sortable by any column;
+**positions**, showing HOLD / EXIT against the deterministic exit rules with
+add, close and delete; and a **symbol** view with an adjusted-price chart, the
+four EMAs, volume, RSI, and that symbol's corporate actions.
+
+Every table has a **copy CSV** button that copies exactly what is on screen —
+current sort, current columns — straight onto the clipboard for the research
+prompt below. Values are copied raw rather than display-formatted, so
+percentages stay as ratios, with float noise trimmed (`70.0484`, not
+`70.04838562011719`). It falls back to a legacy copy path on a plain-HTTP LAN
+address, where `navigator.clipboard` is unavailable because the page is not a
+secure context.
+
+### What it deliberately does not do
+
+The server is a DuckDB connector and nothing more. It cannot run a backtest,
+trigger an ingest, or change config — those stay on the command line where their
+output is reviewable and their parameters are in version control. The only writes
+it performs are adding, closing and deleting rows in `positions`.
+
+### Two constraints worth knowing
+
+**It never holds the database open.** DuckDB allows a single writer and no
+concurrent readers from other processes, so a server holding even a read-only
+handle would block `nsemom daily` from taking its write lock — the scheduled job
+would fail every night the UI was running. Every request opens and closes its own
+connection instead. On a 685 MB database that costs about 6 ms to open and 2 ms
+to query, which is irrelevant for one person clicking around. If the daily job is
+mid-run, the UI returns a clear 503 rather than hanging.
+
+**There is no authentication**, by request. It binds to `127.0.0.1` by default.
+`--host 0.0.0.0` makes it reachable from the LAN, which is fine on a home network
+and unwise anywhere else — it can write to the positions table.
+
+```bash
+./.venv/bin/nsemom serve --host 0.0.0.0 --port 8787   # reachable from the LAN
+cd ui && npm run dev                                   # hot reload, proxies /api
+```
+
+No Python dependencies were added for any of this — the server is stdlib
+`ThreadingHTTPServer`, because the project pins every dependency to a version
+with a verified aarch64 wheel and a dashboard is not a good reason to add a web
+framework and a Rust-compiled validator to that set.
 
 ## Corporate actions
 
@@ -192,15 +252,21 @@ than argument:
 
 ```bash
 nsemom screen                                    # today, default preset
-nsemom backtest --preset hybrid --preset chartink --preset spec
-nsemom backtest --preset hybrid --split 2023-01-01   # walk-forward
+nsemom backtest --preset pullback --preset trend --preset breakout
+nsemom backtest --preset pullback --split 2021-01-01  # walk-forward
 ```
 
 | preset | what it is |
 |---|---|
-| `hybrid` | **default.** EMA stacking, ADX, median-turnover floor, volume expansion as a *ranking* input rather than a gate |
-| `chartink` | the live Chartink screener, reproduced exactly |
-| `spec` | the literal original written spec |
+Presets are named for **when they enter** — all four require an established
+uptrend, so entry timing is the only thing that really separates them.
+
+| preset | enters | |
+|---|---|---|
+| `pullback` | on weakness inside strength | **default** |
+| `trend` | whenever the trend qualifies | no timing filter |
+| `breakout` | on a one-day volume surge | reproduces the Chartink screener |
+| `baseline` | whenever the trend qualifies | the original written spec |
 
 Two differences worth knowing about, both measured rather than assumed:
 
@@ -326,6 +392,72 @@ And 2021-2026 was an exceptional Indian bull market. A long-only momentum book
 would have done well in it almost regardless, so the 26.76% out-of-sample figure
 is substantially regime rather than edge.
 
+## Is RSI 60–75 overbought? And what about the Stochastic?
+
+Both worth asking, and both measurable rather than arguable. Measured over 4.87M
+bars, using forward 60-session returns on liquid names with 200+ bars of history.
+
+**RSI 60–75 is not overbought in any way that costs you.** Within bars that
+already pass the EMA stack and ADX, forward returns barely move across the band:
+
+| RSI | bars | mean 60d | median 60d | win rate |
+|---|---|---|---|---|
+| <50 | 37,284 | 10.68% | 5.18% | 61.5% |
+| 50–60 | 70,598 | 10.63% | 5.52% | 61.0% |
+| 60–70 | 87,024 | 10.58% | 5.68% | 61.6% |
+| 70–75 | 29,504 | 10.50% | 6.04% | 62.4% |
+| 75–80 | 16,265 | 10.53% | 6.07% | 62.4% |
+| **80+** | 10,919 | 9.63% | **2.00%** | 64.3% |
+
+The median *improves* slightly as RSI rises. The textbook 70 threshold assumes a
+mean-reverting market; in a trend, RSI sits high for months. The only bucket that
+genuinely turns is 80+, where the median collapses to 2.00% on the widest
+dispersion — and the band's 75 ceiling already excludes it.
+
+So the RSI band earns very little as a return filter here. Its real job is
+capping the 80+ tail.
+
+**The Stochastic does earn its place — inverted from the textbook reading.**
+A *high* %K is mildly negative (8.99% at 90+ against 12.73% below 20). The value
+is in a *low* %K: strong intermediate momentum with the close in the lower half
+of its 14-day range is a pullback inside an intact trend, and it is the best
+setup in the data.
+
+| within RSI 60–75, trending | bars | mean 60d | median 60d | win rate |
+|---|---|---|---|---|
+| **%K < 50 (pullback)** | 6,959 | **25.92%** | **12.35%** | **70.6%** |
+| %K 50–80 | 59,287 | 9.99% | 5.49% | 61.3% |
+| %K 80–90 | 31,482 | 9.29% | 5.33% | 61.1% |
+| %K 90+ | 18,800 | 8.79% | 5.47% | 61.2% |
+
+It survives the checks that usually kill this sort of finding. Split at 2021 it
+holds in both halves (35.6% then 22.0% mean; win rate 70.4% then 70.7%), the
+median is positive in 11 of 12 calendar years, and it spans 433 distinct symbols
+before 2021 and 890 after — not a handful of overlapping bars.
+
+RSI and %K correlate at 0.79, so they are far from independent. The 20% that
+differs is where the value sits.
+
+### The `pullback` preset
+
+`trend` plus `max_stoch_k = 50`, and now the default:
+
+| | `trend` | **`pullback`** |
+|---|---|---|
+| net CAGR, full period | 15.37% | **20.90%** |
+| in-sample 2015–2020 | 14.62% | 16.26% |
+| out-of-sample 2021–2026 | **26.76%** | 25.32% |
+| max drawdown, out-of-sample | −41.76% | **−23.35%** |
+| hit rate, out-of-sample | 52.66% | **56.55%** |
+| 1-year median from any start | +6.86% | **+15.02%** |
+| 1-year windows positive | 55.7% | **73.0%** |
+
+Note it does *not* win on out-of-sample CAGR — 25.32% against 26.76%. What it
+buys is consistency: roughly half the drawdown, and a median year more than twice
+as good. 2025 was +2.10% rather than −29.44%; 2016 −13.77% rather than −30.79%.
+
+Fewer trades (620 against 738), so slots sit empty more often. That is the cost.
+
 ## The LLM research prompt
 
 `nsemom daily` writes the day's shortlist to `data/output/shortlist_YYYY-MM-DD.csv`.
@@ -416,7 +548,8 @@ never committed.
 ## Tests
 
 ```bash
-./.venv/bin/python -m pytest -q
+./.venv/bin/python -m pytest -q     # 106 tests, offline, ~11s
+cd ui && npm run check              # typecheck + render the components in node
 ```
 
 Tests target the things that break silently rather than loudly.
@@ -462,6 +595,20 @@ Tests target the things that break silently rather than loudly.
 - stamp duty is buy-side only
 - flat DP charges dominate small positions and barely register on large ones
 - slippage widens monotonically as liquidity falls
+
+**Web layer** (`test_web.py`)
+- the server runs for real on an ephemeral port, not mocked
+- the position lifecycle: add, list, close, delete, and 404 on an unknown id
+- an entry date with no bar is rejected, because exits need that bar's ATR
+- a symbol path cannot be used to traverse, and unknown routes return JSON
+- the shortlist reports the same columns whether or not anything passed
+
+**UI** (`ui/scripts/render-check.mjs`, 14 checks)
+- the app and chart render in node without throwing
+- the chart survives a single bar, all-null closes, and a flat series — the
+  three shapes that produce `NaN` coordinates and a blank SVG
+- CSV export quotes commas, quotes and newlines; writes null as empty rather
+  than the string `null`; and respects the column order given
 
 **Ingest** (`test_bhavcopy.py`, `test_store.py`, `test_calendar.py`)
 - legacy and UDiFF parsers agree on **every field** of an overlap session
