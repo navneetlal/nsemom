@@ -1,7 +1,10 @@
 # Contributing
 
-Thanks for looking at this. Before changing anything, please read the four
-non-negotiables below — they are the reason the project is shaped the way it is,
+Thanks for looking at this. By taking part you agree to the
+[Code of Conduct](CODE_OF_CONDUCT.md), and contributions are licensed under the
+[GNU AGPL v3](LICENSE) like the rest of the project.
+
+Before changing anything, please read the four non-negotiables below — they are the reason the project is shaped the way it is,
 and a change that violates one will be declined however well written it is.
 
 ## Setup
@@ -106,3 +109,15 @@ The target is a Pi 4 on an SD card, so:
   does not reclaim replaced space, which is what `nsemom compact` exists for
 - CPU-cheap only, no GPU, and prefer vectorised work over Python loops
 - pinned dependencies must have `aarch64` manylinux wheels so nothing compiles
+
+## Licensing and dependencies
+
+The project is **GNU AGPL v3**. Contributions are accepted under the same terms.
+
+That has one practical consequence worth knowing before you add a dependency:
+anything linked into this codebase must carry a compatible licence. It is also
+why [eod2](https://github.com/BennyThadikaran/eod2) — a good NSE dataset — is
+used only as an occasional cross-check on adjusted prices and is **not** a
+dependency. Importing it would make this a derivative work of GPL-3.0 code, and
+its data is a 1.5 GB per-symbol CSV tree that is the wrong shape for an SD card
+anyway.
