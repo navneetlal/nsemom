@@ -1,0 +1,77 @@
+name: Bug report
+description: Something crashes, or produces a result you can show is wrong.
+labels: ["bug"]
+body:
+  - type: dropdown
+    id: stage
+    attributes:
+      label: Which stage
+      options:
+        - "1 - ingest (backfill / update)"
+        - "2 - store, corporate actions (corpactions / adjust)"
+        - "3 - indicators"
+        - "4 - screen / backtest"
+        - "5 - daily output, positions, systemd"
+        - Not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: command
+    attributes:
+      label: Command
+      description: The exact command, including flags. Add `--verbose` if you can.
+      render: shell
+      placeholder: ./.venv/bin/nsemom backtest --preset hybrid --split 2021-01-01
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected, and what happened
+      description: >
+        For a wrong-result report rather than a crash, say how you know it is
+        wrong - a value checked against the bhavcopy, a hand calculation, an
+        independent source.
+    validations:
+      required: true
+
+  - type: textarea
+    id: output
+    attributes:
+      label: Output or traceback
+      render: text
+
+  - type: textarea
+    id: config
+    attributes:
+      label: Changed config
+      description: >
+        Anything you changed in config/config.toml. Most surprising results come
+        from threshold changes rather than code, so this is usually the fastest
+        route to a diagnosis.
+      render: toml
+
+  - type: textarea
+    id: state
+    attributes:
+      label: Database state
+      description: Output of `nsemom status`.
+      render: text
+
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      placeholder: "Pi 4 8GB / Ubuntu 26.04 aarch64 / Python 3.14.7 / duckdb 1.5.5"
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before filing
+      options:
+        - label: "`./.venv/bin/python -m pytest` passes on my checkout"
+        - label: I can reproduce this on a second run

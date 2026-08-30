@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Setup and usage questions
+    url: https://github.com/navneetlal/nsemom/blob/main/README.md
+    about: First-time setup, backfill, the LLM research prompt and measured results.
+  - name: Before changing anything
+    url: https://github.com/navneetlal/nsemom/blob/main/CONTRIBUTING.md
+    about: The four non-negotiables and what a change needs.

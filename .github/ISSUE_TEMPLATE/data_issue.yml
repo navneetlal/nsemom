@@ -1,0 +1,76 @@
+name: NSE data problem
+description: A bar, symbol or corporate action that NSE published differently from what we stored.
+labels: ["data", "nse"]
+body:
+  - type: markdown
+    attributes:
+      value: >
+        This is the most likely class of problem in this project. NSE changes
+        formats without notice - we have already hit a two-digit-year timestamp
+        on a single 2020 session and two corporate actions packed into one
+        subject string. Concrete cases like those are what make them fixable.
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What kind
+      options:
+        - Corporate action not applied, or applied wrongly
+        - A bar's OHLCV disagrees with the published bhavcopy
+        - A file will not parse (format change)
+        - A symbol is missing, duplicated, or changed identity
+        - Something else
+    validations:
+      required: true
+
+  - type: input
+    id: symbol
+    attributes:
+      label: Symbol
+      placeholder: BAJFINANCE
+    validations:
+      required: true
+
+  - type: input
+    id: date
+    attributes:
+      label: Date (or ex-date)
+      placeholder: "2025-06-16"
+    validations:
+      required: true
+
+  - type: textarea
+    id: published
+    attributes:
+      label: What NSE published
+      description: >
+        Paste the bhavcopy row, or the corporate action `subject` string
+        verbatim. Verbatim matters - the exact text becomes the test case.
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: stored
+    attributes:
+      label: What we stored
+      description: |
+        Helpful queries - adjust the symbol and date:
+
+        ```sql
+        SELECT * FROM prices            WHERE symbol='X' AND trade_date='YYYY-MM-DD';
+        SELECT * FROM prices_adjusted   WHERE symbol='X' AND trade_date='YYYY-MM-DD';
+        SELECT * FROM corporate_actions WHERE symbol='X';
+        SELECT * FROM quarantine        WHERE symbol='X';
+        ```
+      render: text
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checked
+    attributes:
+      label: Already checked
+      options:
+        - label: The symbol is not in `quarantine` for this date
+        - label: The corporate action's `verification` is not `mismatch` or `unverified`

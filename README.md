@@ -470,3 +470,10 @@ Tests target the things that break silently rather than loudly.
 - re-ingesting a session replaces rather than appends
 - a run before NSE publishes cannot record today as a holiday
 - blank numerics become None, not 0
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md). The short version: no machine learning in
+the signal path, every threshold in `config/config.toml`, raw prices stay
+immutable, and the three correctness properties above each have dedicated tests
+because breaking any of them flatters results rather than breaking them visibly.

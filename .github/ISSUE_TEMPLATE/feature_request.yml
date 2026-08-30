@@ -1,0 +1,59 @@
+name: Feature request
+description: Propose a change to the screen, indicators, exits, costs or tooling.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: >
+        Please read the four non-negotiables in CONTRIBUTING.md first. In short:
+        no machine learning in the signal path, no web UI or REST API, every
+        threshold in config, and raw data stays immutable.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What is wrong or missing today. Not the solution yet.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Ingest or data sources
+        - Corporate actions
+        - Indicators
+        - Screen or presets
+        - Backtest, exits or costs
+        - Daily output, positions, scheduling
+        - Tooling, docs, CI
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: >
+        If this changes what gets traded, measured evidence carries far more
+        weight than reasoning. Say which period the numbers came from, and
+        whether any parameter was chosen by looking at that same period.
+      render: text
+
+  - type: checkboxes
+    id: constraints
+    attributes:
+      label: Constraints
+      options:
+        - label: No fitted model, neural net or trained scoring function in the signal path
+        - label: Any new threshold is a config value, not a constant in code
+        - label: Runs CPU-only within a Raspberry Pi 4's memory and SD-card budget

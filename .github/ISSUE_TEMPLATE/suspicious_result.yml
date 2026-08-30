@@ -1,0 +1,53 @@
+name: Suspicious backtest result
+description: A backtest number that looks too good, or that you cannot reconcile.
+labels: ["backtest", "correctness"]
+body:
+  - type: markdown
+    attributes:
+      value: >
+        A backtest that looks too good is usually a bug, and the three classic
+        causes - unadjusted corporate actions, survivorship bias and look-ahead -
+        all bias results the *same* way, upward. Two real examples from this
+        repo's history: a slot-ledger leak that froze the portfolio after 15
+        trades, and a corporate action parser that read one of two components.
+        Both produced plausible-looking numbers.
+
+  - type: textarea
+    id: result
+    attributes:
+      label: The result
+      description: Paste the backtest table, including the gross and net blocks.
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: command
+    attributes:
+      label: Command and config
+      description: The command, plus anything changed in config/config.toml.
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: why
+    attributes:
+      label: Why it looks wrong
+      description: >
+        What made you suspicious - a CAGR out of line with the index, a hit rate
+        near 100%, a drawdown that seems impossible, trade counts that do not
+        match the slot count and hold length.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: ruled_out
+    attributes:
+      label: Sanity checks already done
+      description: These catch most of it, and none need a code change.
+      options:
+        - label: "Trade count is roughly `slots x (250 / avg_hold_days) x years` - a large shortfall means positions are not being released"
+        - label: "`nsemom status` reports zero failed dates and zero duplicates"
+        - label: "Parameters were NOT chosen by looking at the period being reported"
+        - label: "I ran it with `--split` and the out-of-sample half is not wildly better than in-sample"
