@@ -33,6 +33,7 @@ class Preset:
     volume_mode: str
     volume_metric: str
     volume_min_ratio: float
+    max_stoch_k: float | None
     rank_by: str
     basket_size: int
 
@@ -42,7 +43,7 @@ class Preset:
             "require_ema_stack", "require_close_above", "rsi_min", "rsi_max",
             "adx_min", "min_close", "liquidity_mode", "min_turnover",
             "volume_mode", "volume_metric", "volume_min_ratio", "rank_by",
-            "basket_size")})
+            "basket_size")}, max_stoch_k=raw.get("max_stoch_k"))
 
     @property
     def volume_column(self) -> str:
@@ -71,6 +72,11 @@ def conditions(preset: Preset, min_warmup_bars: int) -> list[str]:
         # this have a 20-day median turnover below the same threshold, because
         # the volume spike the screen selects on also inflates today's turnover.
         clauses.append(f"close * volume >= {preset.min_turnover}")
+
+    if preset.max_stoch_k is not None:
+        # Deliberately a ceiling, not a floor: a low %K inside an intact trend is
+        # a pullback, which measured far better than an extended one.
+        clauses.append(f"stoch_k <= {preset.max_stoch_k}")
 
     if preset.volume_mode == "gate":
         clauses.append(f"{preset.volume_column} >= {preset.volume_min_ratio}")

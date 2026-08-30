@@ -152,7 +152,9 @@ def compute_sequential(store: Store, cfg: Config) -> int:
 def compute_windows(store: Store, cfg: Config) -> int:
     """Pass two: everything non-recursive, as DuckDB window functions."""
     ind = cfg.indicators
-    ema_short, ema_mid = sorted(ind.ema_periods)[0], sorted(ind.ema_periods)[1]
+    ema_mid = sorted(ind.ema_periods)[1]
+    stoch_back = ind.stoch_period - 1
+    stoch_smooth = ind.stoch_smoothing - 1
     skip_total = ind.momentum_long_days + ind.momentum_skip_days
 
     store.con.execute("DROP TABLE IF EXISTS indicators")
@@ -213,20 +215,31 @@ def compute_windows(store: Store, cfg: Config) -> int:
                        ROWS BETWEEN {ind.up_day_window - 1} PRECEDING AND CURRENT ROW
                    ) AS up_day_ratio,
 
+                   -- Stochastic %K: position of the close within the recent
+                   -- high-low range. Kept for what it actually measures here -
+                   -- a pullback inside an intact trend - rather than as the
+                   -- overbought signal the textbook reading suggests.
+                   100.0 * (close - min(low) OVER k)
+                       / nullif(max(high) OVER k - min(low) OVER k, 0) AS stoch_k,
+
                    count(*) OVER (PARTITION BY symbol ORDER BY trade_date
                        ROWS UNBOUNDED PRECEDING) AS bar_index
               FROM with_prior
-            WINDOW w AS (PARTITION BY symbol ORDER BY trade_date)
+            WINDOW w AS (PARTITION BY symbol ORDER BY trade_date),
+                   k AS (PARTITION BY symbol ORDER BY trade_date
+                         ROWS {stoch_back} PRECEDING)
         ),
         extended AS (
             SELECT *,
+                   avg(stoch_k) OVER (PARTITION BY symbol ORDER BY trade_date
+                       ROWS {stoch_smooth} PRECEDING) AS stoch_d,
                    (close - ema_{ema_mid}) / nullif(atr, 0) AS ext_atr,
                    close / nullif(high_252, 0) - 1          AS pct_from_high
               FROM windowed
         )
         SELECT * EXCLUDE (rsi, adx, atr, ext_atr, pct_from_high, mom_short,
                           mom_long, mom_long_skip, vol_ratio, vol_sustained,
-                          up_day_ratio, high_252),
+                          up_day_ratio, high_252, stoch_k, stoch_d),
                -- Derived indicators are stored as 32-bit floats. At ~7
                -- significant digits that is far more precision than an RSI or a
                -- volume ratio carries, and it halves the largest table in the
@@ -243,6 +256,7 @@ def compute_windows(store: Store, cfg: Config) -> int:
                CAST(vol_sustained AS FLOAT) AS vol_sustained,
                CAST(up_day_ratio AS FLOAT) AS up_day_ratio,
                CAST(high_252 AS FLOAT) AS high_252,
+               CAST(stoch_k AS FLOAT) AS stoch_k, CAST(stoch_d AS FLOAT) AS stoch_d,
                CAST((ext_atr - avg(ext_atr) OVER z)
                    / nullif(stddev_samp(ext_atr) OVER z, 0) AS FLOAT) AS ext_zscore
           FROM extended

@@ -92,6 +92,8 @@ class IndicatorConfig:
     volume_avg_days: int
     volume_fast_days: int
     volume_slow_days: int
+    stoch_period: int
+    stoch_smoothing: int
     turnover_median_days: int
     high_lookback_days: int
     extension_zscore_days: int
@@ -200,6 +202,8 @@ class Config:
                 volume_avg_days=int(ind["volume_avg_days"]),
                 volume_fast_days=int(ind["volume_fast_days"]),
                 volume_slow_days=int(ind["volume_slow_days"]),
+                stoch_period=int(ind["stoch_period"]),
+                stoch_smoothing=int(ind["stoch_smoothing"]),
                 turnover_median_days=int(ind["turnover_median_days"]),
                 high_lookback_days=int(ind["high_lookback_days"]),
                 extension_zscore_days=int(ind["extension_zscore_days"]),

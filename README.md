@@ -259,6 +259,7 @@ nsemom backtest --preset hybrid --split 2023-01-01   # walk-forward
 | preset | what it is |
 |---|---|
 | `hybrid` | **default.** EMA stacking, ADX, median-turnover floor, volume expansion as a *ranking* input rather than a gate |
+| `pullback` | hybrid plus a Stochastic %K ceiling — see below; better risk-adjusted, fewer trades |
 | `chartink` | the live Chartink screener, reproduced exactly |
 | `spec` | the literal original written spec |
 
@@ -385,6 +386,72 @@ tell you whether the research step adds value on top; `shortlist_log` and
 And 2021-2026 was an exceptional Indian bull market. A long-only momentum book
 would have done well in it almost regardless, so the 26.76% out-of-sample figure
 is substantially regime rather than edge.
+
+## Is RSI 60–75 overbought? And what about the Stochastic?
+
+Both worth asking, and both measurable rather than arguable. Measured over 4.87M
+bars, using forward 60-session returns on liquid names with 200+ bars of history.
+
+**RSI 60–75 is not overbought in any way that costs you.** Within bars that
+already pass the EMA stack and ADX, forward returns barely move across the band:
+
+| RSI | bars | mean 60d | median 60d | win rate |
+|---|---|---|---|---|
+| <50 | 37,284 | 10.68% | 5.18% | 61.5% |
+| 50–60 | 70,598 | 10.63% | 5.52% | 61.0% |
+| 60–70 | 87,024 | 10.58% | 5.68% | 61.6% |
+| 70–75 | 29,504 | 10.50% | 6.04% | 62.4% |
+| 75–80 | 16,265 | 10.53% | 6.07% | 62.4% |
+| **80+** | 10,919 | 9.63% | **2.00%** | 64.3% |
+
+The median *improves* slightly as RSI rises. The textbook 70 threshold assumes a
+mean-reverting market; in a trend, RSI sits high for months. The only bucket that
+genuinely turns is 80+, where the median collapses to 2.00% on the widest
+dispersion — and the band's 75 ceiling already excludes it.
+
+So the RSI band earns very little as a return filter here. Its real job is
+capping the 80+ tail.
+
+**The Stochastic does earn its place — inverted from the textbook reading.**
+A *high* %K is mildly negative (8.99% at 90+ against 12.73% below 20). The value
+is in a *low* %K: strong intermediate momentum with the close in the lower half
+of its 14-day range is a pullback inside an intact trend, and it is the best
+setup in the data.
+
+| within RSI 60–75, trending | bars | mean 60d | median 60d | win rate |
+|---|---|---|---|---|
+| **%K < 50 (pullback)** | 6,959 | **25.92%** | **12.35%** | **70.6%** |
+| %K 50–80 | 59,287 | 9.99% | 5.49% | 61.3% |
+| %K 80–90 | 31,482 | 9.29% | 5.33% | 61.1% |
+| %K 90+ | 18,800 | 8.79% | 5.47% | 61.2% |
+
+It survives the checks that usually kill this sort of finding. Split at 2021 it
+holds in both halves (35.6% then 22.0% mean; win rate 70.4% then 70.7%), the
+median is positive in 11 of 12 calendar years, and it spans 433 distinct symbols
+before 2021 and 890 after — not a handful of overlapping bars.
+
+RSI and %K correlate at 0.79, so they are far from independent. The 20% that
+differs is where the value sits.
+
+### The `pullback` preset
+
+`hybrid` plus `max_stoch_k = 50`:
+
+| | hybrid | **pullback** |
+|---|---|---|
+| net CAGR, full period | 15.37% | **20.90%** |
+| in-sample 2015–2020 | 14.62% | 16.26% |
+| out-of-sample 2021–2026 | **26.76%** | 25.32% |
+| max drawdown, out-of-sample | −41.76% | **−23.35%** |
+| hit rate, out-of-sample | 52.66% | **56.55%** |
+| 1-year median from any start | +6.86% | **+15.02%** |
+| 1-year windows positive | 55.7% | **73.0%** |
+
+Note it does *not* win on out-of-sample CAGR — 25.32% against 26.76%. What it
+buys is consistency: roughly half the drawdown, and a median year more than twice
+as good. 2025 was +2.10% rather than −29.44%; 2016 −13.77% rather than −30.79%.
+
+Fewer trades (620 against 738), so slots sit empty more often. That is the cost.
 
 ## The LLM research prompt
 
