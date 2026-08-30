@@ -86,8 +86,9 @@ def shortlist(store: Store, preset: Preset, rules: ExitRules,
         """,
         [as_of, preset.basket_size],
     ).df()
-    if frame.empty:
-        return frame
+    # Deliberately no early return on an empty frame: a day where nothing passes
+    # must still report the same columns as any other day, or every consumer has
+    # to special-case it.
     frame["suggested_stop"] = frame["close"] - rules.initial_stop_atr * frame["atr"]
     return frame[[c for c in SHORTLIST_COLUMNS if c in frame.columns]]
 
@@ -117,7 +118,11 @@ def open_position_status(store: Store, rules: ExitRules, ema_mid_period: int,
                    min(i.low)                                       AS lowest_low
               FROM entry_state e
               JOIN indicators i
-                ON i.symbol = e.symbol AND i.trade_date > e.entry_date
+                -- The entry bar is included, so a position bought on the most
+                -- recent session still reports (as HOLD, 1 bar held) instead of
+                -- being dropped by the join. This also makes bars_held agree
+                -- with the backtest, where the entry bar counts as day one.
+                ON i.symbol = e.symbol AND i.trade_date >= e.entry_date
                                        AND i.trade_date <= ?
              GROUP BY e.position_id
         )

@@ -29,6 +29,10 @@ produces a flattering backtest and a disappointing live account.
     tracking     Today's output also says: HOLD / EXIT for what you own.
 
 [7] Backtest     measures the shortlist's expectancy and the exit rules
+
+     UI          `nsemom serve` — a local read-only view of the same DuckDB
+                 file, plus adding and closing positions. Nothing else: it
+                 cannot run a backtest, an ingest, or edit config.
 ```
 
 The split matters: **the deterministic layer decides what is worth looking at,
@@ -46,6 +50,7 @@ All five stages are built and tested.
 | 3 — Indicators | EMA/RSI/ADX/ATR + evidence pack | `nsemom indicators` |
 | 4 — Screen + backtest | presets, costs, exits, walk-forward | `nsemom screen` / `backtest` |
 | 5 — Schedule + output | systemd timer, CSV + position exits | `nsemom daily` |
+| Local UI (optional) | read-only browser view + position entry | `nsemom serve` |
 
 ## First-time setup
 
@@ -56,7 +61,7 @@ git clone <this repo> && cd momentum-trading
 python3 -m venv .venv
 ./.venv/bin/pip install -r requirements-dev.txt
 ./.venv/bin/pip install -e .
-./.venv/bin/python -m pytest        # 18 tests, all offline
+./.venv/bin/python -m pytest        # 106 tests, all offline
 ```
 
 On the Pi, `duckdb`, `pandas` and `numpy` all publish `cp314` aarch64 manylinux
@@ -111,7 +116,8 @@ That runs the whole chain and leads its output with HOLD / EXIT for anything you
 hold, before listing new candidates. It exits non-zero if any date failed or a
 health check trips, so the scheduled job fails loudly rather than leaving you
 with a stale shortlist. Individual stages are also available on their own
-(`update`, `corpactions`, `adjust`, `indicators`, `screen`).
+(`update`, `corpactions`, `adjust`, `indicators`, `screen`, `backtest`,
+`compact`, `position`).
 
 ### Storage
 
@@ -130,6 +136,52 @@ Derived indicators are stored as 32-bit floats, which halves the largest table
 and changes no result — the full backtest is bit-identical either way. OHLC,
 turnover and median turnover stay 64-bit because they become fill prices and a
 liquidity threshold.
+
+## Local UI
+
+An optional browser view of the same database, for when reading a wide table over
+SSH gets tiring.
+
+```bash
+cd ui && npm install && npm run build     # once
+./.venv/bin/nsemom serve                  # http://127.0.0.1:8787
+```
+
+Three tabs: the **shortlist** for any session and preset, sortable by any column;
+**positions**, showing HOLD / EXIT against the deterministic exit rules with
+add, close and delete; and a **symbol** view with an adjusted-price chart, the
+four EMAs, volume, RSI, and that symbol's corporate actions.
+
+### What it deliberately does not do
+
+The server is a DuckDB connector and nothing more. It cannot run a backtest,
+trigger an ingest, or change config — those stay on the command line where their
+output is reviewable and their parameters are in version control. The only writes
+it performs are adding, closing and deleting rows in `positions`.
+
+### Two constraints worth knowing
+
+**It never holds the database open.** DuckDB allows a single writer and no
+concurrent readers from other processes, so a server holding even a read-only
+handle would block `nsemom daily` from taking its write lock — the scheduled job
+would fail every night the UI was running. Every request opens and closes its own
+connection instead. On a 685 MB database that costs about 6 ms to open and 2 ms
+to query, which is irrelevant for one person clicking around. If the daily job is
+mid-run, the UI returns a clear 503 rather than hanging.
+
+**There is no authentication**, by request. It binds to `127.0.0.1` by default.
+`--host 0.0.0.0` makes it reachable from the LAN, which is fine on a home network
+and unwise anywhere else — it can write to the positions table.
+
+```bash
+./.venv/bin/nsemom serve --host 0.0.0.0 --port 8787   # reachable from the LAN
+cd ui && npm run dev                                   # hot reload, proxies /api
+```
+
+No Python dependencies were added for any of this — the server is stdlib
+`ThreadingHTTPServer`, because the project pins every dependency to a version
+with a verified aarch64 wheel and a dashboard is not a good reason to add a web
+framework and a Rust-compiled validator to that set.
 
 ## Corporate actions
 
@@ -416,7 +468,8 @@ never committed.
 ## Tests
 
 ```bash
-./.venv/bin/python -m pytest -q
+./.venv/bin/python -m pytest -q     # 106 tests, offline, ~11s
+cd ui && npm run check              # typecheck + render the components in node
 ```
 
 Tests target the things that break silently rather than loudly.
@@ -462,6 +515,18 @@ Tests target the things that break silently rather than loudly.
 - stamp duty is buy-side only
 - flat DP charges dominate small positions and barely register on large ones
 - slippage widens monotonically as liquidity falls
+
+**Web layer** (`test_web.py`)
+- the server runs for real on an ephemeral port, not mocked
+- the position lifecycle: add, list, close, delete, and 404 on an unknown id
+- an entry date with no bar is rejected, because exits need that bar's ATR
+- a symbol path cannot be used to traverse, and unknown routes return JSON
+- the shortlist reports the same columns whether or not anything passed
+
+**UI** (`ui/scripts/render-check.mjs`)
+- the app and chart render in node without throwing
+- the chart survives a single bar, all-null closes, and a flat series — the
+  three shapes that produce `NaN` coordinates and a blank SVG
 
 **Ingest** (`test_bhavcopy.py`, `test_store.py`, `test_calendar.py`)
 - legacy and UDiFF parsers agree on **every field** of an overlap session

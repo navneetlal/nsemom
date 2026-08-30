@@ -379,6 +379,12 @@ def cmd_position(args: argparse.Namespace, cfg: Config) -> int:
     return 0
 
 
+def cmd_serve(args: argparse.Namespace, cfg: Config) -> int:
+    from .web import serve
+    serve(cfg, args.host, args.port)
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="nsemom")
     parser.add_argument("--config", default=None, help="path to config.toml")
@@ -413,6 +419,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = sub.add_parser("compact", help="reclaim dead space from rebuilt tables")
     p.set_defaults(func=cmd_compact)
+
+    p = sub.add_parser("serve", help="local read-only UI (no authentication)")
+    p.add_argument("--host", default="127.0.0.1",
+                   help="use 0.0.0.0 to reach it from another machine on the LAN")
+    p.add_argument("--port", type=int, default=8787)
+    p.set_defaults(func=cmd_serve)
 
     p = sub.add_parser("screen", help="today's shortlist")
     p.add_argument("--preset", default=None)
